@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UJson - 节点式JSON编辑器</title>
+  </head>
+
+  <body>
+    <div id="app">
+        <!-- 顶部工具栏 -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="app-menu-container">
+                    <button class="app-title-btn" id="app-menu-btn">☰ UJson</button>
+                    <div class="dropdown-menu" id="file-dropdown">
+                        <div class="menu-option has-submenu" id="file-menu">
+                            <span>文件</span>
+                            <span class="submenu-arrow">▶</span>
+                        </div>
+                        <div class="menu-submenu" id="file-submenu">
+                            <div class="menu-option" id="new-file">
+                                <span>新建</span>
+                                <span class="shortcut">Ctrl+N</span>
+                            </div>
+                            <div class="menu-option" id="open-file">
+                                <span>打开</span>
+                                <span class="shortcut">Ctrl+O</span>
+                            </div>
+                            <div class="menu-option" id="import-file">
+                                <span>导入</span>
+                                <span class="shortcut">Ctrl+I</span>
+                            </div>
+                            <div class="menu-option" id="save-file">
+                                <span>保存</span>
+                                <span class="shortcut">Ctrl+S</span>
+                            </div>
+                            <div class="menu-option" id="save-as-file">
+                                <span>另存为</span>
+                                <span class="shortcut">Ctrl+Alt+S</span>
+                            </div>
+                        </div>
+                        <div class="menu-option has-submenu" id="window-menu">
+                            <span>窗口</span>
+                            <span class="submenu-arrow">▶</span>
+                        </div>
+                        <div class="menu-submenu" id="window-submenu">
+                            <div class="menu-option checkable" id="toggle-json-preview">
+                                <span class="checkbox-indicator"></span>
+                                <span>JSON预览</span>
+                            </div>
+                            <div class="menu-option checkable" id="toggle-node-properties">
+                                <span class="checkbox-indicator"></span>
+                                <span>节点属性</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="toolbar-buttons">
+                    <button id="add-null" class="tool-btn null-btn">空</button>
+                    <button id="add-string" class="tool-btn string-btn">字符串</button>
+                    <button id="add-number" class="tool-btn number-btn">数字</button>
+                    <button id="add-boolean" class="tool-btn boolean-btn">布尔值</button>
+                    <button id="add-array" class="tool-btn array-btn">数组</button>
+                    <button id="add-object" class="tool-btn object-btn">对象</button>
+                    <button id="add-output" class="tool-btn output-btn">输出</button>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <div class="view-controls">
+                    <input type="range" id="zoom-slider" class="zoom-slider" min="10" max="300" value="100" title="缩放">
+                    <span class="zoom-info" id="zoom-info">100%</span>
+                    <button id="reset-view" class="view-btn" title="重置视图">🏠</button>
+                </div>
+                <button id="clear-all" class="clear-btn">清空</button>
+            </div>
+        </div>
+
+        <!-- 主编辑区域 -->
+        <div class="editor-container">
+            <div id="canvas" class="canvas-container">
+                <svg id="connections" class="connections-layer"></svg>
+                <div id="nodes" class="nodes-layer"></div>
+            </div>
+            
+            <!-- 右侧面板 - 带Tab切换 -->
+            <div class="right-panel">
+                <div class="panel-tabs">
+                    <button class="tab-btn active" data-tab="json">JSON预览</button>
+                    <button class="tab-btn" data-tab="properties">节点属性</button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- JSON预览Tab -->
+                    <div id="json-tab" class="tab-panel active">
+                        <pre id="json-preview" class="json-preview">{}</pre>
+                    </div>
+                    
+                    <!-- 节点属性Tab -->
+                    <div id="properties-tab" class="tab-panel">
+                        <div id="node-properties" class="node-properties">
+                            <p class="placeholder">选择一个节点查看属性</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" id="sort-nodes">排序</div>
+        <div class="context-menu-item" id="disconnect-socket">断开连接</div>
+        <div class="context-menu-item danger" id="delete-socket">删除插槽</div>
+        <div class="context-menu-item danger" id="delete-node">
+            <span>删除节点</span>
+            <span class="shortcut">Del</span>
+        </div>
+    </div>
+
+    <!-- 保存成功提示对话框 -->
+    <dialog id="save-success-dialog" class="save-dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3 id="dialog-title">保存成功</h3>
+            </div>
+            <div class="dialog-body">
+                <p id="dialog-message">文件已成功保存</p>
+                <p class="file-path" id="dialog-path"></p>
+            </div>
+            <div class="dialog-footer">
+                <button id="dialog-close-btn" class="dialog-btn">确定</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- 场景变更确认对话框 -->
+    <dialog id="scene-confirm-dialog" class="confirm-dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3>场景未保存</h3>
+            </div>
+            <div class="dialog-body">
+                <p>当前场景包含未保存的更改，您希望如何处理？</p>
+            </div>
+            <div class="dialog-footer">
+                <button id="confirm-save-exit-btn" class="dialog-btn primary">保存并退出</button>
+                <button id="confirm-discard-exit-btn" class="dialog-btn secondary">丢弃并退出</button>
+                <button id="confirm-cancel-btn" class="dialog-btn">取消</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script type="module" src="/main.js" defer></script>
+  </body>
+</html>
